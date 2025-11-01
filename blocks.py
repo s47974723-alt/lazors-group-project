@@ -9,7 +9,7 @@ direction is (dx, dy)
 
 class Block:
     """
-    Block class: all blocks in laser game
+    Block class: all blocks in laszor game
     """
     def interact(self, direction):
         raise NotImplementedError
@@ -17,7 +17,7 @@ class Block:
 
 class Reflect(Block):
     """
-    Reflect(A): reverses laser direction
+    Reflect(A): reverses lazor direction
     """
     def interact(self, direction):
         dx, dy = direction
@@ -69,3 +69,4 @@ class FixedBlock(Block):
 
     def __repr__(self):
         return f"Fixed({self.block})"
+
