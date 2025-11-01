@@ -4,7 +4,7 @@ import re
 # Type aliases for readability
 Grid = List[List[str]]
 BlockCounts = Dict[str, int]
-Laser = Tuple[int, int, int, int]
+Lazor = Tuple[int, int, int, int]
 Point = Tuple[int, int]
 
 
@@ -16,7 +16,7 @@ def parse_bff(path: str) -> Tuple[Grid, BlockCounts, List[Laser], List[Point]]:
     """
     grid: Grid = []
     block_counts: BlockCounts = {'A': 0, 'B': 0, 'C': 0}
-    lasers: List[Laser] = []
+    lazors: List[Laser] = []
     targets: List[Point] = []
 
     try:
@@ -66,13 +66,13 @@ def parse_bff(path: str) -> Tuple[Grid, BlockCounts, List[Laser], List[Point]]:
                     block_counts[key] = 0
             continue
 
-        # Laser line L x y vx vy
+        # Lazor line L x y vx vy
         if key == 'L':
             # Find all integers
             nums = [int(x) for x in re.findall(r'-?\d+', line)]
             if len(nums) >= 4:
                 x, y, vx, vy = nums[0], nums[1], nums[2], nums[3]
-                lasers.append((x, y, vx, vy))
+                lazors.append((x, y, vx, vy))
             # If less than 4, ignore
             continue
 
@@ -145,7 +145,8 @@ if __name__ == "__main__":
     for row in grid:
         print(" ".join(row))
     print("block_counts:", bc)
-    print("lasers:", lasers)
+    print("lazors:", lasers)
     print("targets:", targets)
     print("valid place positions:", valid_place_positions(grid))
     print("fixed blocks:", get_fixed_blocks(grid))
+
