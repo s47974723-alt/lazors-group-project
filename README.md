@@ -1,17 +1,17 @@
 # Lazor Group Project - Hello World
 
-# Project Structure
+## Project Structure
 
-# 1. parse module (parser.py)
+## 1. parser module (parser.py)
 
 The parser reads .bff file and converts text into data structure required by solver, including:
- - Board grid (0-exmpty and block can be placed, x-block cannot be placed)
+ - Board grid (o-exmpty and block can be placed, x-block cannot be placed)
  - Number of placeable block types (A, B, C)
  - Lazor sources and their vectors
  - Target points
  - Valid place positions
 
-Output data example (dark_1.bff):
+###Output data example (dark_1.bff):
   GRID:
   x o o
   o o o
@@ -22,12 +22,15 @@ Output data example (dark_1.bff):
   valid place positions: [(1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2)]
   fixed blocks: {}
 
-Usage:
-python parser.py examples/dark_1.bff
+###Usage:
+ python parser.py examples/dark_1.bff
 
-# 2. block module (block.py)
+## 2. block module (block.py)
 
 The block module defines behavior of each block type in lazor game.
   - A-reflect block: reflects the lazor
   - B-opaque block: absorbs the lazor
   - C-refract block: reflects + transmits
+
+# Group members and contribution:
+- Zhikuang Yan: parser, block modules
