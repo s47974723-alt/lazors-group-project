@@ -11,7 +11,7 @@ The parser reads .bff file and converts text into data structure required by sol
  - Target points
  - Valid place positions
 
-###Output data example (dark_1.bff):
+### Output data example (dark_1.bff):
   GRID:
   x o o
   o o o
@@ -22,7 +22,7 @@ The parser reads .bff file and converts text into data structure required by sol
   valid place positions: [(1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2)]
   fixed blocks: {}
 
-###Usage:
+### Usage:
  python parser.py examples/dark_1.bff
 
 ## 2. block module (block.py)
