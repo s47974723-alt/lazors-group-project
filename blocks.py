@@ -48,7 +48,7 @@ class Reflect(Block):
     """
     Reflect(A): reverses lazor direction
     """
-    def interact(self, direction, hit_side):
+    def interact(self, direction, hit_side=None):
         dx, dy = direction
         valid_sides = ['up', 'down', 'left', 'right']
         
@@ -121,6 +121,3 @@ class FixedBlock(Block):
 
     def __repr__(self):
         return f"Fixed({self.block})"
-
-
-
