@@ -73,7 +73,7 @@ class Reflect(Block):
 
 class Opaque(Block):
     """
-    Opaque(B): absorbs laser without output
+    Opaque(B): absorbs lazor without output
     """
     def interact(self, direction):
         return []
@@ -121,5 +121,6 @@ class FixedBlock(Block):
 
     def __repr__(self):
         return f"Fixed({self.block})"
+
 
 
