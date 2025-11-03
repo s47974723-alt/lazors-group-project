@@ -91,7 +91,7 @@ def parse_bff(path: str) -> Tuple[Grid, BlockCounts, List[Lazor], List[Point]]:
             if len(r) != row_len:
                 raise ValueError("Error. Please check the .bff file.")
 
-    return grid, block_counts, lasers, targets
+    return grid, block_counts, lazors, targets
 
 def grid_size(grid: Grid) -> Tuple[int, int]:
     """
@@ -140,14 +140,15 @@ if __name__ == "__main__":
     parser.add_argument("bff", help=".bff file road")
     args = parser.parse_args()
 
-    grid, bc, lasers, targets = parse_bff(args.bff)
+    grid, bc, lazors, targets = parse_bff(args.bff)
     print("GRID:")
     for row in grid:
         print(" ".join(row))
     print("block_counts:", bc)
-    print("lazors:", lasers)
+    print("lazors:", lazors)
     print("targets:", targets)
     print("valid place positions:", valid_place_positions(grid))
     print("fixed blocks:", get_fixed_blocks(grid))
+
 
 
