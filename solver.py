@@ -1,10 +1,10 @@
 import sys
 import itertools
-import time
+import time 
 from typing import List, Dict, Tuple, Set
 
 # --- Importing Your Other Code ---
-# Let's grab all the helper functions and classes you already built.
+# Let's grab all the helper functions and cpython solver.py (Get-ChildItem -Path bff_files\*.bff).FullNameses you already built.
 try:
     from parser import parse_bff, valid_place_positions, grid_size, get_fixed_blocks, Lazor
     from blocks import Block, Reflect, Opaque, Refract, FixedBlock
@@ -20,7 +20,7 @@ except ImportError as e:
 Point = Tuple[int, int]
 Cell = Tuple[int, int]
 BlockCounts = Dict[str, int]
-Laser = Tuple[int, int, int, int] # <-- This is OK, it's just an alias inside solver.py
+Lazor = Tuple[int, int, int, int] # <-- This is OK, it's just an alias inside solver.py
 Grid = List[List[str]]
 
 
