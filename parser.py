@@ -8,15 +8,15 @@ Lazor = Tuple[int, int, int, int]
 Point = Tuple[int, int]
 
 
-def parse_bff(path: str) -> Tuple[Grid, BlockCounts, List[Laser], List[Point]]:
+def parse_bff(path: str) -> Tuple[Grid, BlockCounts, List[Lazor], List[Point]]:
     """
     parse .bff file
-    output: (grid, block_counts, lasers, targets)
+    output: (grid, block_counts, lazors, targets)
 
     """
     grid: Grid = []
     block_counts: BlockCounts = {'A': 0, 'B': 0, 'C': 0}
-    lazors: List[Laser] = []
+    lazors: List[Lazor] = []
     targets: List[Point] = []
 
     try:
@@ -149,4 +149,5 @@ if __name__ == "__main__":
     print("targets:", targets)
     print("valid place positions:", valid_place_positions(grid))
     print("fixed blocks:", get_fixed_blocks(grid))
+
 
