@@ -26,15 +26,13 @@ This module manages grid updates and block placement for the Lazor solver and pr
 
 ## 3. tracer module (tracer.py)
 
-The tracer module implements the lazor simulation engine for the Lazor game.
-It is responsible for tracking laser movement through the grid, determining interactions with different block types, and identifying whether all target points are reached.
+This module simulates lazor (laser) paths on the Lazor half-grid board. It handles block interactions (reflect/absorb/refract), boundary checks, and reports whether all target holes are hit.
 
 ### Main Functions:
- - in_bounds_half(pt, rows, cols): Checks if a half-cell coordinate is within the board boundary.
- - cells_touched_by_step(curr, d): Determines which block cells a laser may cross when moving one step.
- - _apply_block(block, direction, hit_side): Applies block-specific behavior (reflection, absorption, or refraction).
- - trace_single(...): Traces the path of a single laser beam, including reflections and splits.
- - trace_all(...): Runs simulation for all lazors (including branches created by “C” blocks) and collects results such as hit points and full paths.
+ - trace_all_paths() – Main simulation loop; traces all lazor rays step-by-step until all targets are hit or the step limit is reached.
+ - compute_reflection() – Determines which neighboring block the lazor strikes next and computes the new outgoing direction(s).
+ - trace_block_interaction() – Defines how each block type (A, B, C, o, x) affects the lazor (reflection, absorption, refraction, or straight-through).
+ - is_out_of_bounds() – Checks if the lazor’s next position goes beyond the grid boundary.
 
 ### Behavior Rules:
  - A (Reflect block): Reflects the lazor by flipping its direction according to which side it hits.
@@ -44,4 +42,4 @@ The simulation stops when the lazor exits the grid or is absorbed by a B block.
 
 # Group members and contribution:
 - Zhikuang Yan: parser, block modules
-- Ziyu Peng: tracer module — implemented the laser physics engine, multi-lazor tracing, reflection/refraction logic, and integrated unit tests for verification.
+- Ziyu Peng: tracer module — implemented the laser physics engine, multi-lazor tracing, reflection/refraction logic.
