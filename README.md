@@ -5,25 +5,17 @@
 ## 1. parser module (parser.py)
 
 The parser reads .bff file and converts text into data structure required by solver, including:
- - Board grid (o-exmpty and block can be placed, x-block cannot be placed)
- - Number of placeable block types (A, B, C)
- - Lazor sources and their vectors
- - Target points
- - Valid place positions
+ - Grid layout and valid block positions
+ - Number of movable blocks (A, B, C)
+ - Lazor starting coordinates and directions
+ - Target points to be hit by lazors
 
-### Output data example (dark_1.bff):
-  GRID:
-  x o o
-  o o o
-  o o x
-  block_counts: {'A': 0, 'B': 3, 'C': 0}
-  lazors: [(3, 0, -1, 1), (1, 6, 1, -1), (3, 6, -1, -1), (4, 3, 1, -1)]
-  targets: [(0, 3), (6, 1)]
-  valid place positions: [(1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2)]
-  fixed blocks: {}
-
-### Usage:
- python parser.py examples/dark_1.bff
+Return: 
+- grid_full: Expanded grid (with inserted 'x' separators)
+- num_a/b/c_blocks: Number of reflect (A/B/C) blocks
+- lazor_start: Lazors start points [x, y, vx, vy]
+- end_point_positions: Target coordinates [x, y]
+- raw_grid: Original grid from .bff file
 
 ## 2. block module (block.py)
 
