@@ -163,7 +163,8 @@ def trace_single(start: Point,
                 continue
 
             interacted = True
-            outs = _apply_block(blk, d)
+            hit_side = _compute_hit_side(curr, d, cell)
+            outs = _apply_block(blk, d, hit_side=hit_side)
 
             if not outs:
                 # Absorbed by 'B'
@@ -300,5 +301,6 @@ if __name__ == "__main__":
             # Sanity: total path length should remain modest (no runaway loop).
             total_len = sum(len(p) for p in out["paths"])
             self.assertLessEqual(total_len, 200)
+
 
     unittest.main(verbosity=2)
