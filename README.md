@@ -70,6 +70,6 @@ The solver module integrates all components to find and display the final Lazor 
  - Text (Terminal): Displays the solved board as a grid of characters (A/B/C/x/o), followed by the sequence of block placements and a completion message showing the generated image name.
  - Image (Visual): The .png output provides a complete visual verification — fixed and movable blocks are labeled, red lines show lazor paths, red dots mark starting points, and white          circles outline target holes that have been successfully hit.
 # Group members and contribution:
-- Zhikuang Yan: parser, block modules
+- Zhikuang Yan: parser module and block module
 - Ziyu Peng: tracer module — implemented the laser physics engine, multi-lazor tracing, reflection/refraction logic.
 - Tsunghan Lin: solver module
