@@ -3,8 +3,6 @@ import itertools
 import time 
 from typing import List, Dict, Tuple, Set
 
-# --- Importing Your Other Code ---
-# Let's grab all the helper functions and cpython solver.py (Get-ChildItem -Path bff_files\*.bff).FullNameses you already built.
 try:
     from parser import parse_bff, valid_place_positions, grid_size, get_fixed_blocks, Lazor
     from blocks import Block, Reflect, Opaque, Refract, FixedBlock
