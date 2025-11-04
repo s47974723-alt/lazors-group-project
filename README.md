@@ -1,5 +1,8 @@
 # Lazor Group Project - Hello World
 
+## Project Goal
+This project aims to automatically solve Lazor puzzles by reading .bff files, simulating lazor paths with different block types (reflect, opaque, refract), and generating clear visual outputs of the solved boards.
+
 ## How to Run
 
 1. Download all 4 main Python modules:
@@ -27,7 +30,7 @@ The parser reads .bff file and converts text into data structure required by sol
 
 Return: 
 - grid_full: Expanded grid (with inserted 'x' separators)
-- num_a/b/c_blocks: Number of reflect (A/B/C) blocks
+- num_a/b/c_blocks: Number of 3 types of blocks (A/B/C) 
 - lazor_start: Lazors start points [x, y, vx, vy]
 - end_point_positions: Target coordinates [x, y]
 - raw_grid: Original grid from .bff file
