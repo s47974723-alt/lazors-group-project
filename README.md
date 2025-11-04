@@ -1,19 +1,19 @@
 # Lazor Group Project - Hello World
 
 ## Project Goal
-This project aims to automatically solve Lazor puzzles by reading '.bff' files, simulating lazor paths with different block types (reflect, opaque, refract), and generating clear visual outputs of the solved boards.
+This project aims to automatically solve Lazor puzzles by reading `.bff` files, simulating lazor paths with different block types (reflect, opaque, refract), and generating clear visual outputs of the solved boards.
 
 ## How to Run
 
 1. Download all 4 main Python modules:
-   - 'parser.py'
-   - 'blocks.py'
-   - 'tracer.py'
-   - 'solver.py'
+   - `parser.py`
+   - `blocks.py`
+   - `tracer.py`
+   - `solver.py`
 
-2. Download the '.bff' example files and place them in the same project folder.
+2. Download the `.bff` example files and place them in the same project folder.
 
-3. Run the solver:' >python solver.py'
+3. Run the solver: > python solver.py
 
 4. The solved board images will be generated in the same directory.
 
