@@ -1,71 +1,95 @@
 """
-blocks.py
+parser.py
 
-Helper functions for Lazor grid and block placement.
+Read and parse Lazor .bff files.
 
-- Grid_part: update grid when placing blocks
-- find_occupied_spots: find fixed A/B/C blocks
-- obvious_skip: skip clearly invalid configurations
+ - Allowed and fixed block positions
+ - Number of movable blocks (A, B, C)
+ - Lazor starting coordinates and directions
+ - Target points to be hit by lazors
+
+Output is formatted to match the solver interface.
 """
 
-class Grid_part:
+from typing import List, Tuple
+
+def parse_bff(file_name: str):
     """
-    Manage grid updates when placing blocks.
+    Parse a .bff file and return all required information.
+
+    Parameters
+    ----------
+    file_name: str
+        The path of the .bff file to read.
+
+    Returns
+    -------
+    grid_full: list[list[str]]
+        Expanded grid (with inserted 'x' separators)
+    num_a_blocks: int
+        Number of reflect (A) blocks
+    num_b_blocks: int
+        Number of opaque (B) blocks
+    num_c_blocks: int
+        Number of refract (C) blocks
+    lazor_start: list[list[int]]
+        Lazors as [x, y, vx, vy]
+    end_point_positions: list[list[int]]
+        Target coordinates [x, y]
+    raw_grid: list[list[str]]
+        Original (non-expanded) grid
     """
 
-    def __init__(self, original_grid):
-        """
-        Initialize the grid.
-        original_grid : list[list[str]]
-            2D grid from .bff file
-        """
-        self.original_grid = original_grid
-        self.length = len(original_grid)
-        self.width = len(original_grid[0])
-        self.list_grid = None
+    # Initialize storage
+    temp_grid: List[List[str]] = []
+    num_a_blocks = num_b_blocks = num_c_blocks = 0
+    lazor_start: List[List[int]] = []
+    end_point_positions: List[List[int]] = []
 
-    def generate_grid(self, list_grid, position):
-        """
-        Place blocks into the grid
-        list_grid : list[str]
-            blocks to place
-        position : list[list[int]]
-            valid positions
-        """
-        self.list_grid = list_grid
-        for row in range(self.length):
-            for column in range(self.width):
-                # Skip fixed or invalid spots
-                if [row, column] not in position:
-                    if self.original_grid[row][column] != 'x' and list_grid:
-                        self.original_grid[row][column] = list_grid.pop(0)
-        return self.original_grid
+    # Read all lines
+    with open(file_name, "r") as f:
+        lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+
+    # Parse contents
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.upper().startswith("GRID START"):
+            i += 1
+            while i < len(lines) and lines[i].upper() != "GRID STOP":
+                temp_grid.append([x for x in lines[i] if x != " "])
+                i += 1
+        elif line.startswith("A "):
+            num_a_blocks = int("".join([c for c in line if c.isdigit()]) or 0)
+        elif line.startswith("B "):
+            num_b_blocks = int("".join([c for c in line if c.isdigit()]) or 0)
+        elif line.startswith("C "):
+            num_c_blocks = int("".join([c for c in line if c.isdigit()]) or 0)
+        elif line.startswith("L "):
+            parts = line.split()
+            lazor_start.append([int(p) for p in parts[1:5]])
+        elif line.startswith("P "):
+            parts = line.split()
+            end_point_positions.append([int(p) for p in parts[1:3]])
+        i += 1
+
+    # Build expanded grid
+    raw_grid = temp_grid.copy()
+    row, col = len(temp_grid), len(temp_grid[0])
+    insert = ["x"] * (2 * col + 1)
+    grid_full = [r[:] for r in temp_grid]
+    for r in range(row):
+        for c in range(col + 1):
+            grid_full[r].insert(2 * c, "x")
+    for r in range(row + 1):
+        grid_full.insert(2 * r, insert)
+
+    return grid_full, num_a_blocks, num_b_blocks, num_c_blocks, lazor_start, end_point_positions, raw_grid
 
 
-def find_occupied_spots(small_grid):
-    """
-    Return positions of fixed A/B/C blocks in expanded grid
-    """
-    positions = []
-    for i in range(len(small_grid)):
-        for j in range(len(small_grid[0])):
-            if small_grid[i][j] in ['A', 'B', 'C']:
-                positions.append([i * 2 + 1, j * 2 + 1])
-    return positions
-
-
-def obvious_skip(grid, possibles, lst, holes):
-    """
-    Skip setups where targets are blocked by A/B blocks
-    """
-    for x0, y0 in holes:
-        x, y = y0, x0
-        try:
-            if ((grid[x][y + 1] in ['A', 'B']) and (grid[x][y - 1] in ['A', 'B'])) or \
-               ((grid[x + 1][y] in ['A', 'B']) and (grid[x - 1][y] in ['A', 'B'])):
-                return False
-            else:
-                return True
-        except IndexError:
-            continue
-    return True
+# Self test: imple test to verify that the parser reads .bff files correctly.
+if __name__ == "__main__":
+    import pprint
+    path = input("Enter .bff file path: ")
+    result = parse_bff(path)
+    pprint.pprint(result)
