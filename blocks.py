@@ -1,123 +1,71 @@
 """
 blocks.py
-Defines behavior of block types for Lazor game:
-A = Reflect, B = Opaque, C = Refract.
 
-interact(direction) -> list of outgoing directions
-direction is (dx, dy)
+Helper functions for Lazor grid and block placement.
+
+- Grid_part: update grid when placing blocks
+- find_occupied_spots: find fixed A/B/C blocks
+- obvious_skip: skip clearly invalid configurations
 """
 
-class Block:
+class GridBuilder:
     """
-    Block class: all blocks in laszor game
+    Manage grid updates when placing blocks.
     """
-    def interact(self, direction):
-        raise NotImplementedError
+
+    def __init__(self, original_grid):
+        """
+        Initialize the grid.
+        original_grid : list[list[str]]
+            2D grid from .bff file
+        """
+        self.original_grid = original_grid
+        self.length = len(original_grid)
+        self.width = len(original_grid[0])
+        self.list_grid = None
+
+    def generate_grid(self, list_grid, position):
+        """
+        Place blocks into the grid
+        list_grid : list[str]
+            blocks to place
+        position : list[list[int]]
+            valid positions
+        """
+        self.list_grid = list_grid
+        for row in range(self.length):
+            for column in range(self.width):
+                # Skip fixed or invalid spots
+                if [row, column] not in position:
+                    if self.original_grid[row][column] != 'x' and list_grid:
+                        self.original_grid[row][column] = list_grid.pop(0)
+        return self.original_grid
 
 
-def get_hit_side(lazor_pos, lazor_dir, block_pos, block_size=1):
+def find_occupied_spots(small_grid):
     """
-    Identify the specific face of a block that a lazor hits
-    - lazor_pos: Coordinates before the lazor hits (x, y)
-    - lazor_dir: (dx, dy)
-    - block_pos: (x, y)
-    return hit_side: hit face (up=top, down=bottom, right/left=right/left)
+    Return positions of fixed A/B/C blocks in expanded grid
     """
-    x_lazor, y_lazor = lazor_pos
-    dx, dy = lazor_dir
-    x_block, y_block = block_pos
-    block_right = x_block + block_size  # Right side of the block
-    block_bottom = y_block + block_size  # Bottom of the block
+    positions = []
+    for i in range(len(small_grid)):
+        for j in range(len(small_grid[0])):
+            if small_grid[i][j] in ['A', 'B', 'C']:
+                positions.append([i * 2 + 1, j * 2 + 1])
+    return positions
 
-    # Match hit side according to lazor direction and position
-    if dx == 1 and x_lazor == x_block:  # Lazor to the right, hit the left side of the block
-        return 'left'
-    elif dx == -1 and x_lazor == block_right:  # Lazor to the left, hit the right side of the block
-        return 'right'
-    elif dy == 1 and y_lazor == y_block:  # Lazor to the down, hit the top of the block
-        return 'up'
-    elif dy == -1 and y_lazor == block_bottom:  # Lazor to the up, hit the bottom of the block
-        return 'down'
-    else:
-        raise ValueError(
-            f"Lazor position{lazor_pos}and direction{lazor_dir}cannot match block position{block_pos}, so the hit side is not confirmed."
-        )
-    
 
-class Reflect(Block):
+def obvious_skip(grid, possibles, lst, holes):
     """
-    Reflect(A): reverses lazor direction
+    Skip setups where targets are blocked by A/B blocks
     """
-    def interact(self, direction, hit_side=None):
-        dx, dy = direction
-        valid_sides = ['up', 'down', 'left', 'right']
-        
-         # Verfiy the validity of the hit side
-        if hit_side not in valid_sides:
-            raise ValueError(f"Unvalid hit face'{hit_side}'，only support{valid_sides}")
-
-        # Reverse the corresponding direction according to the type of hit face
-        if hit_side in ['up', 'down']:
-            # Collision with horizional surface (top/bottom):vertical direction reverses, horizontal direction remains unchanged
-            return [(dx, -dy)]
-        elif hit_side in ['left', 'right']:
-            # Collision with vertical surface (right/left):vertical direction remains unchanged, horizontal direction reverses
-            return [(-dx, dy)]
-        
-        # Fallback: if unexpected direction, reverse
-        return [(-dx, -dy)]
-
-    def __repr__(self):
-        return "A"
-
-
-class Opaque(Block):
-    """
-    Opaque(B): absorbs lazor without output
-    """
-    def interact(self, direction):
-        return []
-
-    def __repr__(self):
-        return "B"
-
-
-class Refract(Block):
-    """
-    Refract(C): produces 2 beams: reflect + transmitted
-    """
-    def interact(self, direction):
-        dx, dy = direction
-        
-        # transmitted beam
-        transmitted = (dx, dy)
-
-        # reflected beam
-        reflected = Reflect().interact(direction)[0]
-
-        # return both beams
-        return [transmitted, reflected]
-
-    def __repr__(self):
-        return "C"
-
-
-class FixedBlock(Block):
-    """
-    Fixed block on .bff file grid
-    """
-    def __init__(self, block):
-        self.block = block
-
-    def interact(self, direction):
-        if self.block == 'A':
-            return Reflect().interact(direction)
-        elif self.block == 'B':
-            return Opaque().interact(direction)
-        elif self.block == 'C':
-            return Refract().interact(direction)
-        else:
-            raise ValueError("Invalid fixed block type")
-
-    def __repr__(self):
-        return f"Fixed({self.block})"
+    for x0, y0 in holes:
+        x, y = y0, x0
+        try:
+            if ((grid[x][y + 1] in ['A', 'B']) and (grid[x][y - 1] in ['A', 'B'])) or \
+               ((grid[x + 1][y] in ['A', 'B']) and (grid[x - 1][y] in ['A', 'B'])):
+                return False
+            else:
+                return True
+        except IndexError:
+            continue
+    return True
