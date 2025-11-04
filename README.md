@@ -40,6 +40,16 @@ This module simulates lazor (laser) paths on the Lazor half-grid board. It handl
  - C (Refract block): Splits the lazor into two paths — one reflected and one transmitted.
 The simulation stops when the lazor exits the grid or is absorbed by a B block.
 
+## 4. solver module (solver.py)
+The solver module integrates all components to find and display the final Lazor solution. It loads the puzzle from a .bff file, enumerates valid A/B/C block placements, simulates laser movement for each configuration, and outputs both an image and a text summary of the result.
+### Main Functions:
+ - solver(fptr) – Entry point that reads the .bff, determines available block positions, calls path_seek(...) to test possible layouts, prints the solution grid, and saves the solved image.
+ - path_seek(...) – Generates all unique block permutations (A/B/C), builds boards via GridBuilder.generate_grid(...), prunes invalid layouts with obvious_skip(...), and validates success      through LazorTracer.lazor_path(...).
+ - image_output(...) – Draws the final board with labeled blocks, red laser paths and start points, and white target holes; saves as {filename}_solved.png.
+### Final Output Presentation:
+ - Text (Terminal): Displays the solved board as a grid of characters (A/B/C/x/o), followed by the sequence of block placements and a completion message showing the generated image name.
+ - Image (Visual): The .png output provides a complete visual verification — fixed and movable blocks are labeled, red lines show lazor paths, red dots mark starting points, and white          circles outline target holes that have been successfully hit.
 # Group members and contribution:
 - Zhikuang Yan: parser, block modules
 - Ziyu Peng: tracer module — implemented the laser physics engine, multi-lazor tracing, reflection/refraction logic.
+- Tsunghan Lin: solver module
