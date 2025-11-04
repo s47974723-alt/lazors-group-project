@@ -1,306 +1,140 @@
-from __future__ import annotations
-from typing import Dict, Iterable, List, Set, Tuple
-from collections import deque
+# This module is used to simulate the propagation, reflection, refraction and hitting of the laser on the Lazor chessboard, as well as the target point.
+from typing import List, Union, Optional
 
-# Import existing block behaviors
-from blocks import Block, Reflect, Opaque, Refract, FixedBlock
-
-# Type aliases
-Point = Tuple[int, int]   # half-cell coordinate (x, y)
-Dir   = Tuple[int, int]   # direction (dx, dy) with components in {-1,0,1}, not both 0
-Cell  = Tuple[int, int]   # grid cell (cx, cy)
-
-# Determine whether a half-grid coordinate is still within the chessboard range.
-def in_bounds_half(pt: Point, rows: int, cols: int) -> bool:
-    # Check if a half-cell coordinate is still inside the board
-    x, y = pt
-    return 0 <= x <= 2 * cols and 0 <= y <= 2 * rows
-
-# Check whether the position of the square to be placed is within the chessboard.
-def in_bounds_cell(cell: Cell, rows: int, cols: int) -> bool:
-    # Check if a cell coordinate (grid position) is inside the board
-    cx, cy = cell
-    return 0 <= cx < cols and 0 <= cy < rows
-
-# Make the laser move one step in the current direction.
-def step(pt: Point, d: Dir) -> Point:
-    # Move one step along direction d
-    return (pt[0] + d[0], pt[1] + d[1])
-
-# Check whether the character in a certain cell is a square.
-def _norm_block_char(ch: str) -> str | None:
-    # Normalize grid characters to uppercase A/B/C if valid
-    if not isinstance(ch, str):
-        return None
-    up = ch.upper()
-    return up if up in ("A", "B", "C") else None
-
-# Find all the fixed blocks (A/B/C) in the grid, convert them into program objects and record them.
-def build_blocks_map(grid: List[List[str]]) -> Dict[Cell, Block]:
-    rows = len(grid)
-    cols = len(grid[0]) if rows else 0
-    blocks: Dict[Cell, Block] = {}
-    for y in range(rows):
-        for x in range(cols):
-            tok = _norm_block_char(grid[y][x])
-            if tok is None:
-                continue
-            blocks[(x, y)] = FixedBlock(tok)
-    return blocks
-
-# Determine which cells a step may touch
-def cells_touched_by_step(curr: Point, d: Dir) -> List[Cell]:
-    x, y = curr
-    dx, dy = d
-    touched: List[Cell] = []
-
-# Based on the current direction of the laser (dx, dy), calculate the coordinates of the block grid that it might hit when moving one step from its current position.
-    if dx != 0 and dy == 0:
-        # Horizontal move: check the current row
-        cy = (y - 1) // 2
-        cx = (x + dx) // 2 if dx > 0 else (x + dx) // 2 - 1
-        touched.append((cx, cy))
-    elif dy != 0 and dx == 0:
-        # Vertical move: check the current column
-        cx = (x - 1) // 2
-        cy = (y + dy) // 2 if dy > 0 else (y + dy) // 2 - 1
-        touched.append((cx, cy))
-    else:
-        # Diagonal: check horizontal side first, then vertical side
-        cy_h = (y - 1) // 2
-        cx_h = (x + dx) // 2 if dx > 0 else (x + dx) // 2 - 1
-        touched.append((cx_h, cy_h))
-
-        cx_v = (x - 1) // 2
-        cy_v = (y + dy) // 2 if dy > 0 else (y + dy) // 2 - 1
-        touched.append((cx_v, cy_v))
-
-    return touched
-
-# Based on the current direction d (dx, dy) of the laser and the hit cell, determine from which side the light enters the cell.
-def _compute_hit_side(curr: Point, d: Dir, hit_cell: Cell) -> str:
-    dx, dy = d
-    # Horizontal movement: When dx > 0, enter the hit_cell from its "left"; when dx < 0, enter from the "right".
-    if dx != 0 and dy == 0:
-        return 'left' if dx > 0 else 'right'
-    # Vertical movement: When dy > 0, enter from "up"; when dy < 0, enter from "down".
-    if dy != 0 and dx == 0:
-        return 'up' if dy > 0 else 'down'
-    # Diagonal: by our candidate ordering, the first cell corresponds to the horizontal-side crossing, so treat as left/right based on dx.
-    return 'left' if dx > 0 else 'right'
-
-# Apply block interaction
-def _apply_block(block: Block, direction: Dir, hit_side: str | None = None) -> List[Dir]:
-    # detect A (Reflect or FixedBlock('A'))：Call `block.interact` to obtain the reflection or refraction direction. 
-    # If it is an A block and a collision edge is provided, flip the x or y direction according to the edge; otherwise, use the default interaction logic and filter out invalid directions.
-    is_reflect = isinstance(block, Reflect) or (
-        hasattr(block, "block") and getattr(block, "block", None) == "A"
-    )
-
-    if is_reflect and hit_side is not None:
-        # Try new signature first: interact(direction, hit_side)
-        try:
-            outs = block.interact(direction, hit_side)  # type: ignore[arg-type]
-        except TypeError:
-            # Fall back to legacy signature but enforce edge-aware reflection here
-            dx, dy = direction
-            if hit_side in ('left', 'right'):
-                outs = [(-dx, dy)]
-            elif hit_side in ('up', 'down'):
-                outs = [(dx, -dy)]
-            else:
-                outs = [(-dx, -dy)]
-    else:
-        # If B/C or the 'hit_side' is not available, then use the behavior settings in the 'blocks.py' file.
-        outs = block.interact(direction)
-
-    # sanitize directions
-    valid: List[Dir] = []
-    for dx, dy in outs:
-        if (dx, dy) == (0, 0):
-            continue
-        if dx not in (-1, 0, 1) or dy not in (-1, 0, 1):
-            continue
-        valid.append((dx, dy))
-    return valid
-  
-
-# Trace one single laser beam
-def trace_single(start: Point,
-                 d0: Dir,
-                 targets: Set[Point],
-                 blocks_map: Dict[Cell, Block],
-                 rows: int,
-                 cols: int,
-                 max_steps: int = 20000) -> Tuple[List[Point], Set[Point], List[Dir]]:
-    # This part is the initialization of the state.
-    path: List[Point] = [start]
-    covered: Set[Point] = set()
-    if start in targets:
-        covered.add(start)
-
-    curr = start
-    d = d0
-    steps = 0
-
-    while steps < max_steps:
-        nxt = step(curr, d)
-
-        # Exit boundary  
-        if not in_bounds_half(nxt, rows, cols):
-            path.append(nxt)
-            if nxt in targets:
-                covered.add(nxt)
-            return path, covered, []
-
-        # Check potential blocks along the step
-        interacted = False
-        for cell in cells_touched_by_step(curr, d):
-            if not in_bounds_cell(cell, rows, cols):
-                continue
-            blk = blocks_map.get(cell)
-            if blk is None:
-                continue
-
-            interacted = True
-            hit_side = _compute_hit_side(curr, d, cell)
-            outs = _apply_block(blk, d, hit_side=hit_side)
-
-            if not outs:
-                # Absorbed by 'B'
-                path.append(nxt)
-                if nxt in targets:
-                    covered.add(nxt)
-                return path, covered, []
-
-            if len(outs) == 1:
-                # Reflected by 'A' (reverse direction)
-                path.append(curr)
-                d = outs[0]
-                break
-
-            # Refracted by 'C': stop here, return two directions
-            path.append(curr)
-            return path, covered, outs
-
-        if not interacted:
-            # Move forward normally
-            curr = nxt
-            path.append(curr)
-            if curr in targets:
-                covered.add(curr)
-
-        steps += 1
-
-    # Reached max steps (safety stop)
-    return path, covered, []
+Coord = List[int]     # [x, y]
+Ray   = List[int]     # [x, y, dx, dy]
+Grid  = List[List[str]]
 
 
-# Simulate all laser beams (including the branched light generated by the C block), and summarize all paths and hit results
-def trace_all(grid: List[List[str]],
-              lazors: Iterable[Tuple[int, int, int, int]],
-              targets: Set[Point],
-              blocks_map: Dict[Cell, Block],
-              rows: int,
-              cols: int,
-              max_steps: int = 40000):
+class LazorTracer:
+    # Trace Lazor rays across an expanded half-grid puzzle board.
+    def __init__(self, grid: Grid, lazor_list: List[Ray], hole_list: List[Coord]):
+        self.grid = grid
+        self.lazor_list = lazor_list
+        self.hole_list = hole_list
 
-    # Initialize the queue and result container to store the beams to be tracked, their paths, and hit information.
-    q = deque()
-    for (x, y, vx, vy) in lazors:
-        q.append(((x, y), (vx, vy)))
+        # Scratch state set immediately before each interaction
+        self.point: Optional[Coord] = None     # current lattice point being processed
+        self.direction: Optional[Coord] = None # current incoming direction [dx, dy]
 
-    all_paths: List[List[Point]] = []
-    all_hits: Set[Point] = set()
-    covered_targets: Set[Point] = set()
-    alive = 0
+    # Defines how a ray interacts with different block types and updates its direction accordingly.
+    def trace_block_interaction(self, block_type: str) -> List[int]:
+        
+        # Calculate the new ray direction(s) after interacting with a given block type.
+        assert self.point is not None and self.direction is not None
+        x = self.point[0]
+        dx, dy = self.direction
 
-    # Sequentially extract each laser beam for tracking, record the path and update the hit target status.
-    while q:
-        start, d0 = q.popleft()
-        path, covered, branches = trace_single(start, d0, targets, blocks_map, rows, cols, max_steps)
-        all_paths.append(path)
-        all_hits.update(path)
-        covered_targets |= covered
+        if block_type == 'A':                        # Reflect
+            return [-dx, dy] if x % 2 == 0 else [dx, -dy]
+        if block_type == 'B':                        # Opaque
+            return []
+        if block_type == 'C':                        # Refract
+            return [dx, dy, -dx, dy] if x % 2 == 0 else [dx, dy, dx, -dy]
+        if block_type in ('o', 'x'):                 # Empty / no-placement cell
+            return [dx, dy]
+        return []                                    # Unknown → absorb (safe default)
 
-        # Handle the splitting and termination of the light beams, and return the complete tracking results of all the light beams.
-        if branches:
-            # Split beam: add new rays to the queue
-            branch_start = path[-1]
-            for nd in branches:
-                q.append((branch_start, nd))
-        else:
-            # Beam ended (exit or absorbed)
-            alive += 1
+    # Check whether the ray's current or next position goes outside the grid boundaries.
+    def is_out_of_bounds(self, coord: Coord, direction: Optional[Coord]) -> bool:
+       
+       # Check if the current ray position or its next step is outside the grid.
+        w, h = len(self.grid[0]), len(self.grid)
+        x, y = coord
+        if direction is None:
+            return True
+        nx, ny = x + direction[0], y + direction[1]
+        return not (0 <= x < w and 0 <= y < h and 0 <= nx < w and 0 <= ny < h)
 
-    return {
-        "paths": all_paths,
-        "hit_points": all_hits,
-        "covered_targets": covered_targets,
-        "alive": alive,
-    }
+    # The main loop that advances all lazor rays step by step until all targets are hit or the limit is reached.
+    def trace_all_paths(self, max_steps: int = 50) -> Union[int, List[List[Ray]]]:
+        
+        # Simulate all lazor paths step-by-step until all targets are hit or the step limit is reached.
+        # 'hit' bookkeeping: store unique coordinates visited that match holes
+        hits: List[Coord] = []
 
+        # Initialize per-ray path lists with given starting states
+        lazor_paths: List[List[Ray]] = [[lz] for lz in self.lazor_list]
 
-# Unit tests
-if __name__ == "__main__":
-    import unittest
+        for _ in range(max_steps):
+            # Iterate over a snapshot of current paths (paths may grow during loop)
+            for i in range(len(lazor_paths)):
+                x, y, dx, dy = lazor_paths[i][-1]
+                coord = [x, y]
+                direction = [dx, dy]
 
-    class TracerTests(unittest.TestCase):
+                # If this step would go out, we drop the ray silently
+                if self.is_out_of_bounds(coord, direction):
+                    continue
 
-        def _run(self, grid, lazors, targets):
-            rows, cols = len(grid), len(grid[0])
-            blocks = build_blocks_map(grid)
-            return trace_all(grid, lazors, targets, blocks, rows, cols)
+                # Compute outgoing direction(s) based on the neighbor we hit next
+                next_dirs = self.compute_reflection(coord, direction)
 
-        def test_straight_no_blocks_hits_target(self):
-            # Laser moves straight on empty board and hits target at right edge.
-            grid = [['o','o','o'],
-                    ['o','o','o'],
-                    ['o','o','o']]
-            lazors = [(0, 3, 1, 0)]
-            targets = {(5, 3)}
-            out = self._run(grid, lazors, targets)
-            self.assertIn((5,3), out["covered_targets"])
-            self.assertEqual(out["alive"], 1)
+                if not next_dirs:
+                    # Absorbed at current coord (record terminal state)
+                    lazor_paths[i].append([x, y, 0, 0])
+                    if coord in self.hole_list and coord not in hits:
+                        hits.append(coord)
 
-        def test_absorb_by_B(self):
-            # Laser is absorbed by B (no branches).
-            grid = [['o','o','o'],
-                    ['o','B','o'],  # (1,1)
-                    ['o','o','o']]
-            lazors = [(0, 3, 1, 0)]
-            out = self._run(grid, lazors, set())
-            self.assertEqual(out["alive"], 1)
-            # Path should terminate on the same row (y=3) shortly after impact.
-            last_points = [p[-1] for p in out["paths"]]
-            self.assertTrue(any(lp[1] == 3 for lp in last_points))
+                elif len(next_dirs) == 2:
+                    # Single outgoing ray
+                    ndx, ndy = next_dirs
+                    nx, ny = x + ndx, y + ndy
+                    lazor_paths[i].append([nx, ny, ndx, ndy])
+                    if [nx, ny] in self.hole_list and [nx, ny] not in hits:
+                        hits.append([nx, ny])
 
-        def test_reflect_by_A(self):
-            # Laser reflects on A; expects edge-aware reflection (flip x only).
-            grid = [['o','o','o'],
-                    ['o','A','o'],  # (1,1)
-                    ['o','o','o']]
-            lazors = [(0, 3, 1, 0)]
-            targets = {(1, 3)}  # should be hit after reflection
-            out = self._run(grid, lazors, targets)
-            self.assertIn((1,3), out["covered_targets"])
-            self.assertEqual(out["alive"], 1)
+                elif len(next_dirs) == 4:
+                    # Refract: split into two rays
+                    ndx1, ndy1, ndx2, ndy2 = next_dirs
+                    nx1, ny1 = x + ndx1, y + ndy1   # spawned branch
+                    nx2, ny2 = x, y                 # original path continues from same node
 
-        def test_refract_by_C(self):
-            # Laser hits C and splits into two beams (right + left).
-            # NOTE: trace_all advances branch start by one half-step to avoid immediate re-split loops.
-            grid = [['o','o','o'],
-                    ['o','C','o'],  # (1,1)
-                    ['o','o','o']]
-            lazors = [(0, 3, 1, 0)]
-            targets = {(1,3), (5,3)}
-            out = self._run(grid, lazors, targets)
-            # Both sides should be reachable; at least two finished beams.
-            self.assertTrue({(1,3), (5,3)}.issubset(out["covered_targets"]))
-            self.assertGreaterEqual(out["alive"], 2)
-            # Sanity: total path length should remain modest (no runaway loop).
-            total_len = sum(len(p) for p in out["paths"])
-            self.assertLessEqual(total_len, 200)
+                    # New branch starts its own path list
+                    lazor_paths.append([[nx1, ny1, ndx1, ndy1]])
 
+                    # Original path follows the second branch
+                    lazor_paths[i].append([nx2, ny2, ndx2, ndy2])
 
-    unittest.main(verbosity=2)
+                    if [nx2, ny2] in self.hole_list and [nx2, ny2] not in hits:
+                        hits.append([nx2, ny2])
+
+                # else: unrecognized shape → ignore this step
+
+            # Success condition: all holes have been hit at least once
+            if len(hits) == len(self.hole_list):
+                return lazor_paths
+
+        # Not all holes were hit within the step budget
+        return 0
+
+    # Determine which neighboring cell the ray hits and compute its resulting direction(s).
+    def compute_reflection(self, point: Coord, direction: Coord) -> List[int]:
+    
+        # Identify the next neighbor cell hit and compute the resulting outgoing direction(s) based on half-grid parity.
+        self.point = point
+        self.direction = direction
+
+        # Candidate neighbors
+        x1, y1 = point[0],               point[1] + direction[1]  # vertical neighbor (same x, moved in y)
+        x2, y2 = point[0] + direction[0], point[1]                # horizontal neighbor (moved in x, same y)
+
+        if point[0] % 2 == 1:  # odd x → vertical neighbor gets hit
+            block_type = self.grid[y1][x1]
+        else:                  # even x → horizontal neighbor gets hit
+            block_type = self.grid[y2][x2]
+
+        return self.trace_block_interaction(block_type)
+
+    # Provides old method names as aliases to maintain compatibility with previous solver code.
+    def block(self, block_type: str) -> List[int]:
+        return self.trace_block_interaction(block_type)
+
+    def check_position(self, coord: Coord, direction: Optional[Coord]) -> bool:
+        return self.is_out_of_bounds(coord, direction)
+
+    def lazor_path(self, max_steps: int = 50) -> Union[int, List[List[Ray]]]:
+        return self.trace_all_paths(max_steps=max_steps)
+
+    def block_reflect(self, point: Coord, direction: Coord) -> List[int]:
+        return self.compute_reflection(point, direction)
