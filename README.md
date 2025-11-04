@@ -1,5 +1,20 @@
 # Lazor Group Project - Hello World
 
+## How to Run
+
+1. Download all 4 main Python modules:
+   - parser.py
+   - blocks.py
+   - tracer.py
+   - solver.py
+
+2. Download the .bff example files and place them in the same project folder.
+
+3. Run the solver: >python solver.py
+
+4. The solved board images will be generated in the same directory.
+
+
 ## Project Structure
 
 ## 1. parser module (parser.py)
@@ -20,6 +35,8 @@ Return:
 ## 2. block module (blocks.py)
 
 This module manages grid updates and block placement for the Lazor solver and provides functions to handle how blocks (A, B, C) are placed and to skip invalid setups.
+
+### Main Functions:
   - Grid_part – Updates the grid when new blocks are placed.
   - find_occupied_spots() – Finds fixed A/B/C block positions in the grid.
   - obvious_skip() – Skips configurations where holes are blocked by A/B blocks.
