@@ -1,154 +1,95 @@
-from typing import List, Tuple, Dict
-import re
+"""
+parser.py
 
-# Type aliases for readability
-Grid = List[List[str]]
-BlockCounts = Dict[str, int]
-Lazor = Tuple[int, int, int, int]
-Point = Tuple[int, int]
+Read and parse Lazor .bff files.
 
+ - Allowed and fixed block positions
+ - Number of movable blocks (A, B, C)
+ - Lazor starting coordinates and directions
+ - Target points to be hit by lazors
 
-def parse_bff(path: str) -> Tuple[Grid, BlockCounts, List[Lazor], List[Point]]:
+Output is formatted to match the solver interface.
+"""
+
+from typing import List, Tuple
+
+def parse_bff(file_name: str):
     """
-    parse .bff file
-    output: (grid, block_counts, lazors, targets)
+    Parse a .bff file and return all required information.
 
+    Parameters
+    ----------
+    file_name: str
+        The path of the .bff file to read.
+
+    Returns
+    -------
+    grid_full: list[list[str]]
+        Expanded grid (with inserted 'x' separators)
+    num_a_blocks: int
+        Number of reflect (A) blocks
+    num_b_blocks: int
+        Number of opaque (B) blocks
+    num_c_blocks: int
+        Number of refract (C) blocks
+    lazor_start: list[list[int]]
+        Lazors as [x, y, vx, vy]
+    end_point_positions: list[list[int]]
+        Target coordinates [x, y]
+    raw_grid: list[list[str]]
+        Original (non-expanded) grid
     """
-    grid: Grid = []
-    block_counts: BlockCounts = {'A': 0, 'B': 0, 'C': 0}
-    lazors: List[Lazor] = []
-    targets: List[Point] = []
 
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            lines = [ln.rstrip('\n') for ln in f]
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f"Cannot open the file: {path}") from e
+    # Initialize storage
+    temp_grid: List[List[str]] = []
+    num_a_blocks = num_b_blocks = num_c_blocks = 0
+    lazor_start: List[List[int]] = []
+    end_point_positions: List[List[int]] = []
 
-    in_grid = False
-    for raw in lines:
-        if raw is None:
-            continue
-        line = raw.strip()
-        # Ignore empty lines or comment lines
-        if not line or line.startswith('#'):
-            continue
+    # Read all lines
+    with open(file_name, "r") as f:
+        lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
-        # GRID START / STOP control
-        tokens = line.split()
-        if len(tokens) >= 2 and tokens[0].upper() == 'GRID' and tokens[1].upper() == 'START':
-            in_grid = True
-            continue
-        if len(tokens) >= 2 and tokens[0].upper() == 'GRID' and tokens[1].upper() == 'STOP':
-            in_grid = False
-            continue
+    # Parse contents
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.upper().startswith("GRID START"):
+            i += 1
+            while i < len(lines) and lines[i].upper() != "GRID STOP":
+                temp_grid.append([x for x in lines[i] if x != " "])
+                i += 1
+        elif line.startswith("A "):
+            num_a_blocks = int("".join([c for c in line if c.isdigit()]) or 0)
+        elif line.startswith("B "):
+            num_b_blocks = int("".join([c for c in line if c.isdigit()]) or 0)
+        elif line.startswith("C "):
+            num_c_blocks = int("".join([c for c in line if c.isdigit()]) or 0)
+        elif line.startswith("L "):
+            parts = line.split()
+            lazor_start.append([int(p) for p in parts[1:5]])
+        elif line.startswith("P "):
+            parts = line.split()
+            end_point_positions.append([int(p) for p in parts[1:3]])
+        i += 1
 
-        if in_grid:
-            # Split by spaces
-            row_tokens = line.split()
-            if len(row_tokens) == 0:
-                continue
-            # Standardize characters, keep 'o', 'x'
-            norm_row = [tok.upper() if tok.lower() not in ('o','x') else tok.lower() for tok in row_tokens]
-            grid.append(norm_row)
-            continue
+    # Build expanded grid
+    raw_grid = temp_grid.copy()
+    row, col = len(temp_grid), len(temp_grid[0])
+    insert = ["x"] * (2 * col + 1)
+    grid_full = [r[:] for r in temp_grid]
+    for r in range(row):
+        for c in range(col + 1):
+            grid_full[r].insert(2 * c, "x")
+    for r in range(row + 1):
+        grid_full.insert(2 * r, insert)
 
-        # Analysis A/B/C count, L, P
-        key = tokens[0].upper()
-
-        # A/B/C counts: format "A 2" or "B 1"
-        if key in ('A', 'B', 'C'):
-            if len(tokens) >= 2:
-                try:
-                    block_counts[key] = int(tokens[1])
-                except ValueError:
-                    # If it cannot be converted into integer, ignore it and keep the default 0
-                    block_counts[key] = 0
-            continue
-
-        # Lazor line L x y vx vy
-        if key == 'L':
-            # Find all integers
-            nums = [int(x) for x in re.findall(r'-?\d+', line)]
-            if len(nums) >= 4:
-                x, y, vx, vy = nums[0], nums[1], nums[2], nums[3]
-                lazors.append((x, y, vx, vy))
-            # If less than 4, ignore
-            continue
-
-        # Target Point P x y
-        if key == 'P':
-            nums = [int(x) for x in re.findall(r'-?\d+', line)]
-            if len(nums) >= 2:
-                x, y = nums[0], nums[1]
-                targets.append((x, y))
-            continue
-
-    # Verify the consistent number of rows and columns of the grid
-    if grid:
-        row_len = len(grid[0])
-        for r in grid:
-            if len(r) != row_len:
-                raise ValueError("Error. Please check the .bff file.")
-
-    return grid, block_counts, lazors, targets
-
-def grid_size(grid: Grid) -> Tuple[int, int]:
-    """
-    Return the (cols, rows) of grid
-    """
-    rows = len(grid)
-    cols = len(grid[0]) if rows > 0 else 0
-    return cols, rows
+    return grid_full, num_a_blocks, num_b_blocks, num_c_blocks, lazor_start, end_point_positions, raw_grid
 
 
-def valid_place_positions(grid: Grid) -> List[Point]:
-    """
-    Return a list of positions (x, y) on the grid where the blocks can be placed
-    'o' is placeable, 'x' is prohibited
-    If the grid contains 'A''B''C', they are considered fixed blocks and cannot be placed
-    """
-    cols, rows = grid_size(grid)
-    poss: List[Point] = []
-    for y in range(rows):
-        for x in range(cols):
-            val = grid[y][x]
-            if isinstance(val, str) and val.lower() == 'o':
-                poss.append((x, y))
-    return poss
-
-
-def get_fixed_blocks(grid: Grid) -> Dict[Point, str]:
-    """
-    Scan the grid and return fixed mapping
-    """
-    cols, rows = grid_size(grid)
-    fixed = {}
-    for y in range(rows):
-        for x in range(cols):
-            v = grid[y][x]
-            if isinstance(v, str) and v.upper() in ('A', 'B', 'C'):
-                fixed[(x, y)] = v.upper()
-    return fixed
-
-
-
-# If run this file, make a simple self test
+# Self test: imple test to verify that the parser reads .bff files correctly.
 if __name__ == "__main__":
-    import argparse, pprint
-    parser = argparse.ArgumentParser(description="self test parser.py")
-    parser.add_argument("bff", help=".bff file road")
-    args = parser.parse_args()
-
-    grid, bc, lazors, targets = parse_bff(args.bff)
-    print("GRID:")
-    for row in grid:
-        print(" ".join(row))
-    print("block_counts:", bc)
-    print("lazors:", lazors)
-    print("targets:", targets)
-    print("valid place positions:", valid_place_positions(grid))
-    print("fixed blocks:", get_fixed_blocks(grid))
-
-
-
+    import pprint
+    path = input("Enter .bff file path: ")
+    result = parse_bff(path)
+    pprint.pprint(result)
