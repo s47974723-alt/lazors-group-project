@@ -17,12 +17,12 @@ Return:
 - end_point_positions: Target coordinates [x, y]
 - raw_grid: Original grid from .bff file
 
-## 2. block module (block.py)
+## 2. block module (blocks.py)
 
-The block module defines behavior of each block type in lazor game.
-  - A-reflect block: reflects the lazor
-  - B-opaque block: absorbs the lazor
-  - C-refract block: reflects + transmits
+This module manages grid updates and block placement for the Lazor solver and provides functions to handle how blocks (A, B, C) are placed and to skip invalid setups.
+  - Grid_part – Updates the grid when new blocks are placed.
+  - find_occupied_spots() – Finds fixed A/B/C block positions in the grid.
+  - obvious_skip() – Skips configurations where holes are blocked by A/B blocks.
 
 ## 3. tracer module (tracer.py)
 
